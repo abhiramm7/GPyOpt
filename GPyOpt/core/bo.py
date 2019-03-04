@@ -2,6 +2,8 @@
 # Licensed under the BSD 3-clause license (see LICENSE.txt)
 
 import GPyOpt
+import copy
+import pickle
 import collections
 import numpy as np
 import time
@@ -70,11 +72,14 @@ class BO(object):
 
         return suggested_locations
 
-    def run_optimization(self, max_iter = 0, max_time = np.inf,  eps = 1e-8, context = None, verbosity=False, save_models_parameters= True, report_file = None, evaluations_file = None, models_file=None):
+    def run_optimization(self, max_iter=0, logger={}, save_inter_models= False, intervals = 10, max_time = np.inf,  eps = 1e-8, context = None, verbosity=False, save_models_parameters= True, report_file = None, evaluations_file = None, models_file=None):
         """
         Runs Bayesian Optimization for a number 'max_iter' of iterations (after the initial exploration data)
 
         :param max_iter: exploration horizon, or number of acquisitions. If nothing is provided optimizes the current acquisition.
+        :param logger: dict by reference to save the model at intervals. 
+        :param save_inter_models : Save the model at intervals
+        :param interval: Intervals to save the model
         :param max_time: maximum exploration horizon in seconds.
         :param eps: minimum distance between two consecutive x's to keep running the model.
         :param context: fixes specified variables to a particular context (values) for the optimization run (default, None).
@@ -130,6 +135,10 @@ class BO(object):
         self.suggested_sample = self.X
         self.Y_new = self.Y
 
+        # If the maxiter is less than zero, donot store the intermediate models
+        if max_iter/intervals < 1.0:
+            save_inter_models = False
+
         # --- Initialize time cost of the evaluations
         while (self.max_time > self.cum_time):
             # --- Update model
@@ -153,6 +162,11 @@ class BO(object):
             # --- Update current evaluation time and function evaluations
             self.cum_time = time.time() - self.time_zero
             self.num_acquisitions += 1
+
+            if save_inter_models and self.num_acquisitions%intervals == 0:
+                print("Model Saved, num acquisition {}".format(self.num_acquisitions))
+                logger[str(self.num_acquisitions)] = "Bayopt"+str(self.num_acquisitions)+".pickle"
+                self.save(logger[str(self.num_acquisitions)])
 
             if verbosity:
                 print("num acquisition: {}, time elapsed: {:.2f}s".format(
@@ -392,3 +406,8 @@ class BO(object):
 
         data = [header] + results.tolist()
         self._write_csv(models_file, data)
+
+    def save(self, file):
+        f = open(file, 'wb')
+        pickle.dump(self.__dict__, f, 2)
+        f.close()
