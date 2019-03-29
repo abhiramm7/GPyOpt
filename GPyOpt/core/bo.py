@@ -72,10 +72,10 @@ class BO(object):
 
         return suggested_locations
 
-    def run_optimization(self, max_iter=0, logger={}, save_inter_models= False, intervals = 10, max_time = np.inf,  eps = 1e-8, context = None, verbosity=False, save_models_parameters= True, report_file = None, evaluations_file = None, models_file=None):
+    def run_optimization(self, path_to_save, max_iter=0, save_inter_models= False, intervals = 10, max_time = np.inf,  eps = 1e-8, context = None, verbosity=False, save_models_parameters= True, report_file = None, evaluations_file = None, models_file=None):
         """
         Runs Bayesian Optimization for a number 'max_iter' of iterations (after the initial exploration data)
-
+        :param path_to_save: where to save the files
         :param max_iter: exploration horizon, or number of acquisitions. If nothing is provided optimizes the current acquisition.
         :param logger: dict by reference to save the model at intervals. 
         :param save_inter_models : Save the model at intervals
@@ -162,11 +162,12 @@ class BO(object):
             # --- Update current evaluation time and function evaluations
             self.cum_time = time.time() - self.time_zero
             self.num_acquisitions += 1
-
+            
+            log = {}
             if save_inter_models and self.num_acquisitions%intervals == 0:
                 print("Model Saved, num acquisition {}".format(self.num_acquisitions))
-                logger[str(self.num_acquisitions)] = "Bayopt"+str(self.num_acquisitions)+".pickle"
-                self.save(logger[str(self.num_acquisitions)])
+                log[str(self.num_acquisitions)] = path_to_save + "/Bayopt"+str(self.num_acquisitions)
+                self.save(log[str(self.num_acquisitions)])
 
             if verbosity:
                 print("num acquisition: {}, time elapsed: {:.2f}s".format(
@@ -407,7 +408,7 @@ class BO(object):
         data = [header] + results.tolist()
         self._write_csv(models_file, data)
 
-    def save(self, file):
-        f = open(file, 'wb')
-        pickle.dump(self.__dict__, f, 2)
-        f.close()
+    def save(self, files):
+        f = open(files, "wb")
+        pickle.dump(self.__dict__, f)
+
